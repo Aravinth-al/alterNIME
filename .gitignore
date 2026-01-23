@@ -1,0 +1,8 @@
+/Reference/*
+!/Reference/.gitkeep
+
+/input/*
+!/input/.gitkeep
+
+/output/*
+!/output/.gitkeep

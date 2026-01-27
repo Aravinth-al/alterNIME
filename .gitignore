@@ -1,3 +1,4 @@
+# Sensitive folders (keep empty via .gitkeep)
 /Reference/*
 !/Reference/.gitkeep
 
@@ -6,3 +7,10 @@
 
 /output/*
 !/output/.gitkeep
+
+# Sensitive root file
+/TMU - Tax ID to Lucrotec.yxmd
+
+# Python cache (never commit)
+/__pycache__/
+*.pyc

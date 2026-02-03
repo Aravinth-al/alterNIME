@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Review Migration | altKNIME</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-white min-h-screen pb-20 font-sans">
+    
+    <nav class="bg-slate-900 border-b border-slate-800 px-6 py-4 sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-yellow-500 rounded flex items-center justify-center text-slate-900 font-bold">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Review Logic</h1>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-widest">Session: {{ session_id.split('-')[0] }}</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <a href="/" class="px-4 py-2 text-slate-400 hover:text-white transition text-sm">Cancel</a>
+                <button onclick="submitBuild()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition transform hover:scale-105">
+                    <i class="fa-solid fa-hammer"></i> Build Final Workflow
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-[90rem] mx-auto mt-8 px-4">
+        
+        <div class="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-circle-info text-blue-400 mt-1"></i>
+            <div class="text-sm text-blue-200">
+                <p class="font-bold">Instructions:</p>
+                <ul class="list-disc list-inside mt-1 space-y-1 text-blue-300/80">
+                    <li>Review the <strong>Converted Code</strong> on the right against the <strong>Original Formula</strong> on the left.</li>
+                    <li>If the AI made a mistake (e.g., missed a parameter), edit the JavaScript directly.</li>
+                    <li>You can also change the target KNIME node type if the default mapping is incorrect.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-950 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
+                    <tr>
+                        <th class="p-4 w-16 text-center">ID</th>
+                        <th class="p-4 w-48">Source Tool</th>
+                        <th class="p-4 w-64">Target KNIME Node</th>
+                        <th class="p-4">Logic Conversion (Before vs. After)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                    {% for node in nodes %}
+                    <tr class="hover:bg-slate-800/30 transition group">
+                        
+                        <td class="p-4 text-center font-mono text-slate-500 text-xs bg-slate-900/50">
+                            {{ node.id }}
+                        </td>
+                        
+                        <td class="p-4 align-top">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                <span class="font-bold text-white text-sm">{{ node.type }}</span>
+                            </div>
+                            <div class="text-xs text-slate-500 pl-4">Alteryx Native</div>
+                        </td>
+
+                        <td class="p-4 align-top">
+                            <div class="relative">
+                                <select class="knime-select w-full bg-slate-950 border border-slate-700 text-blue-400 text-sm rounded px-3 py-2 appearance-none focus:border-blue-500 outline-none cursor-pointer shadow-sm hover:border-slate-600 transition"
+                                        data-id="{{ node.id }}">
+                                    <option value="{{ node.knime_default }}" selected>{{ node.knime_default }} (Auto)</option>
+                                    <option disabled>──────────</option>
+                                    <option value="Column Expressions">Column Expressions</option>
+                                    <option value="Java Snippet">Java Snippet</option>
+                                    <option value="Python Script">Python Script</option>
+                                    <option value="Rule Engine">Rule Engine</option>
+                                    <option value="Math Formula">Math Formula</option>
+                                    <option value="String Manipulation">String Manipulation</option>
+                                    <option value="GroupBy">GroupBy</option>
+                                    <option value="Joiner">Joiner</option>
+                                </select>
+                                <div class="absolute right-3 top-2.5 text-slate-500 pointer-events-none">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="p-4">
+                            {% if node.is_formula and node.formulas %}
+                                <div class="space-y-6">
+                                    {% for item in node.formulas %}
+                                    <div class="bg-black/40 border border-slate-700 rounded-lg overflow-hidden shadow-sm">
+                                        
+                                        <div class="bg-slate-800/90 px-4 py-2 border-b border-slate-700 flex justify-between items-center backdrop-blur">
+                                            <div class="flex items-center gap-2">
+                                                <i class="fa-solid fa-cube text-yellow-500 text-xs"></i>
+                                                <span class="text-xs font-bold text-slate-200 tracking-wide">OUTPUT: <span class="text-yellow-400">{{ item.column }}</span></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-700">
+                                            
+                                            <div class="p-3 bg-slate-900/50 flex flex-col h-full">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Original (Alteryx)</span>
+                                                    <i class="fa-solid fa-lock text-[10px] text-slate-600"></i>
+                                                </div>
+                                                <pre class="text-xs text-slate-400 font-mono whitespace-pre-wrap break-all flex-grow leading-relaxed selection:bg-slate-700">{{ item.original }}</pre>
+                                            </div>
+
+                                            <div class="relative group flex flex-col h-full bg-slate-950">
+                                                <div class="absolute top-2 right-3 pointer-events-none z-10">
+                                                    <span class="text-[10px] text-green-500/50 font-bold uppercase tracking-wider group-hover:text-green-400 transition">JavaScript</span>
+                                                </div>
+                                                <textarea class="js-editor w-full h-full min-h-[120px] bg-transparent text-green-400 font-mono text-sm p-3 outline-none resize-y focus:bg-slate-900 transition selection:bg-green-900/30"
+                                                          data-id="{{ node.id }}" 
+                                                          data-col="{{ item.column }}"
+                                                          spellcheck="false">{{ item.converted }}</textarea>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="flex items-center gap-2 text-slate-600 italic text-xs bg-slate-900/50 p-3 rounded border border-slate-800/50">
+                                    <i class="fa-regular fa-circle-check"></i>
+                                    <span>Standard configuration mapped automatically. No complex logic to review.</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <button onclick="window.scrollTo({top:0, behavior:'smooth'})" class="fixed bottom-6 left-6 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-full shadow-lg border border-slate-700 transition opacity-50 hover:opacity-100">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <script>
+        async function submitBuild() {
+            const edits = {};
+            const button = document.querySelector('button[onclick="submitBuild()"]');
+            const originalText = button.innerHTML;
+            
+            // Loading State
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Building...';
+
+            try {
+                // 1. Collect Node Type Overrides
+                document.querySelectorAll('.knime-select').forEach(sel => {
+                    if (sel.value !== sel.options[0].value) { // If changed from default
+                        const id = sel.dataset.id;
+                        if (!edits[id]) edits[id] = {};
+                        edits[id].knime_type = sel.value;
+                    }
+                });
+
+                // 2. Collect JS Code Edits
+                document.querySelectorAll('.js-editor').forEach(ta => {
+                    const id = ta.dataset.id;
+                    const col = ta.dataset.col;
+                    
+                    if (!edits[id]) edits[id] = {};
+                    if (!edits[id].js_code) edits[id].js_code = {};
+                    
+                    edits[id].js_code[col] = ta.value;
+                });
+
+                // 3. Submit to Backend
+                const res = await fetch('/build/{{ session_id }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(edits)
+                });
+                
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    window.location.href = data.redirect;
+                } else {
+                    alert('Build failed: ' + (data.error || 'Unknown error'));
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Network error occurred.');
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

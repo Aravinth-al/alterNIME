@@ -1,3 +1,7 @@
+import matplotlib
+# CRITICAL FIX: Force non-interactive backend for Web/Flask use
+matplotlib.use('Agg') 
+
 import json
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -67,5 +71,5 @@ def draw_exact_workflow(graph_data, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    plt.close() # Close memory to prevent leaks
     print(f"🖼️  Graph saved to {output_path}")

@@ -5,23 +5,39 @@ import shutil
 import glob
 from src import config
 
-def extract_yxzp(file_path):
-    """Unzips .yxzp to a temp folder, finds .yxmd, returns path."""
+def prepare_workflow_file(file_path):
+    """
+    Prepares the workflow file for parsing.
+    - If .yxzp: Unzips to temp folder and finds the main .yxmd/.yxwz.
+    - If .yxmd or .yxwz: Returns the path directly.
+    """
     temp_extract_dir = os.path.join(config.BASE_DIR, "temp_extract")
     
+    # Clear previous temp data
     if os.path.exists(temp_extract_dir):
         shutil.rmtree(temp_extract_dir)
     os.makedirs(temp_extract_dir)
 
-    if file_path.endswith('.yxmd'):
+    # 1. Direct Text Files (Workflow or App)
+    if file_path.lower().endswith(('.yxmd', '.yxwz')):
+        print(f"📄 Detected Direct File: {os.path.basename(file_path)}")
         return file_path
 
-    print(f"📦 Unpacking {os.path.basename(file_path)}...")
-    with zipfile.ZipFile(file_path, 'r') as z:
-        z.extractall(temp_extract_dir)
+    # 2. Archives (Zip/YXZP)
+    print(f"📦 Unpacking Archive: {os.path.basename(file_path)}...")
+    try:
+        with zipfile.ZipFile(file_path, 'r') as z:
+            z.extractall(temp_extract_dir)
+    except zipfile.BadZipFile:
+        print(f"❌ Error: {file_path} is not a valid zip file.")
+        return None
     
-    # Find the main workflow file
+    # Search for workflow files inside the zip
+    # Priority: .yxmd (standard) -> .yxwz (app)
     candidates = glob.glob(os.path.join(temp_extract_dir, "**", "*.yxmd"), recursive=True)
+    if not candidates:
+        candidates = glob.glob(os.path.join(temp_extract_dir, "**", "*.yxwz"), recursive=True)
+        
     return candidates[0] if candidates else None
 
 def get_node_config(tool_type, node_xml):
@@ -99,8 +115,7 @@ def get_node_config(tool_type, node_xml):
         # Union
         elif "Union" in tool_type:
             # DEBUG: Check if Union config is captured
-            print(f"   [DEBUG] Found Union Tool. Raw Config: {ET.tostring(conf, encoding='unicode')}")
-            # Union usually has Mode (ByName / ByPosition)
+            print(f"   [DEBUG] Found Union Tool.")
             data['mode'] = conf.findtext('Mode')
             data['output_mode'] = conf.findtext('ByName_OutputMode')
 
@@ -125,10 +140,14 @@ def get_node_config(tool_type, node_xml):
 
     return data
 
-def parse_workflow(yxmd_path):
+def parse_workflow(workflow_path):
     """Main parsing logic."""
+    if not workflow_path:
+        print("❌ No valid workflow file found.")
+        return None
+        
     try:
-        tree = ET.parse(yxmd_path)
+        tree = ET.parse(workflow_path)
         root = tree.getroot()
     except Exception as e:
         print(f"❌ XML Parse Error: {e}")
@@ -171,9 +190,9 @@ def parse_workflow(yxmd_path):
                 "name": conn.get('name', '')
             })
 
-    # Cleanup
+    # Cleanup (Only if we created a temp dir for a zip)
     temp_dir = os.path.join(config.BASE_DIR, "temp_extract")
-    if os.path.exists(temp_dir) and config.INPUT_DIR not in yxmd_path:
+    if os.path.exists(temp_dir) and config.INPUT_DIR not in workflow_path:
         shutil.rmtree(temp_dir)
 
     return {"nodes": nodes, "edges": edges}

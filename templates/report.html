@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Migration Complete</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 p-10 rounded-2xl shadow-2xl text-center max-w-2xl w-full relative overflow-hidden">
+        
+        <div class="mb-6 inline-flex items-center justify-center w-20 h-20 bg-green-500/10 rounded-full animate-bounce">
+            <i class="fa-solid fa-check text-4xl text-green-500"></i>
+        </div>
+        
+        <h1 class="text-4xl font-bold mb-2">Migration Successful!</h1>
+        <p class="text-slate-400 mb-8">Your KNIME workflow has been generated.</p>
+        
+        <div class="bg-slate-800 p-6 rounded-xl mb-8 flex justify-around border border-slate-700">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-white">{{ session.graph.nodes|length }}</div>
+                <div class="text-xs text-slate-500 uppercase mt-1">Nodes</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-white">{{ session.graph.edges|length }}</div>
+                <div class="text-xs text-slate-500 uppercase mt-1">Edges</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-green-400">100%</div>
+                <div class="text-xs text-slate-500 uppercase mt-1">Success</div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4 text-left">
+            <label class="text-xs text-slate-500 uppercase font-bold ml-1">Save As:</label>
+            <div class="flex gap-2">
+                <input type="text" id="filename" value="{{ suggested_name }}" 
+                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none transition font-mono">
+                
+                <button onclick="downloadFile()" class="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 rounded-lg shadow-lg transition transform hover:scale-[1.02] flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-download"></i> Download
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 italic text-center mt-2">
+                *Intermediate files will be deleted from server after download.
+            </p>
+        </div>
+
+        <a href="/" class="block mt-8 text-slate-500 hover:text-white text-sm transition">
+            Process Another File
+        </a>
+    </div>
+
+    <script>
+        function downloadFile() {
+            const name = document.getElementById('filename').value;
+            // FIX: Use the explicit session_id variable from Flask
+            const sessionID = "{{ session_id }}";
+            window.location.href = `/download/${sessionID}?name=${encodeURIComponent(name)}`;
+        }
+    </script>
+</body>
+</html>

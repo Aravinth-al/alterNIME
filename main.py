@@ -7,22 +7,34 @@ def run():
     # 1. SETUP
     if not os.path.exists(config.INPUT_DIR):
         os.makedirs(config.INPUT_DIR)
-        print("Created input/ directory. Add .yxzp files.")
+        print("Created input/ directory. Add .yxzp, .yxmd, or .yxwz files.")
         return
     
-    files = [f for f in os.listdir(config.INPUT_DIR) if f.endswith('.yxzp') or f.endswith('.yxmd')]
+    # Search for all supported Alteryx file types
+    valid_extensions = ('.yxzp', '.yxmd', '.yxwz')
+    files = [f for f in os.listdir(config.INPUT_DIR) if f.lower().endswith(valid_extensions)]
+    
     if not files:
-        print("No .yxzp or .yxmd files found in input/.")
+        print(f"No valid Alteryx files {valid_extensions} found in input/.")
         return
     
     input_path = os.path.join(config.INPUT_DIR, files[0])
     
     # 2. EXTRACT
-    print(f"1. Parsing {files[0]}...")
-    yxmd = extractor.extract_yxzp(input_path)
-    graph = extractor.parse_workflow(yxmd)
+    print(f"1. Processing {files[0]}...")
     
-    if not graph: return
+    # Handles .yxzp (zip), .yxmd (xml), and .yxwz (xml app)
+    workflow_file = extractor.prepare_workflow_file(input_path)
+    
+    if not workflow_file:
+        print("❌ Failed to identify a valid workflow XML file.")
+        return
+
+    graph = extractor.parse_workflow(workflow_file)
+    
+    if not graph: 
+        print("❌ Failed to parse workflow graph.")
+        return
 
     # 3. VISUALIZE (Proof of Structure)
     print("2. Visualizing Structure...")

@@ -11,6 +11,19 @@ FAISS_INDEX_FILE = os.path.join(RESOURCES_DIR, 'faiss_index.bin')
 
 # LLM Settings
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "qwen2.5-coder:7b-instruct-q4_K_M" 
-# Use the lighter model for high-frequency formula tasks as requested
-FORMULA_MODEL_NAME = "qwen2.5-coder:1.5b"
+
+# UPGRADED MODEL: Smarter logic, better at chaining
+# src/config.py
+
+# ... (keep other settings) ...
+
+# UPDATE TO THE SMALLER MODEL
+# LLM Settings
+OLLAMA_API_URL = "http://localhost:11434/api/chat"
+
+# SWITCH TO LLAMA 3.2 (3B Parameters)
+MODEL_NAME = "llama3.2" 
+FORMULA_MODEL_NAME = "llama3.2"
+
+# DEBUG SETTINGS
+DEBUG_MODE = True

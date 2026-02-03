@@ -280,22 +280,26 @@ def get_joiner_model(config_data):
 
 def get_expression_model(config_data):
     """
-    Generates Column Expressions settings using AI transpiler.
+    Generates Column Expressions settings.
+    UPDATED: Checks for pre-converted (User Reviewed) JS first.
     """
-    formulas = config_data.get('formulas', [])
+    # 1. Check if we have reviewed code from the Web UI
+    if 'reviewed_js' in config_data and config_data['reviewed_js']:
+        print(f"      [Builder] Using User-Reviewed Logic for {len(config_data['reviewed_js'])} fields.")
+        merged_scripts = config_data['reviewed_js']
+    else:
+        # Fallback: Run AI now if it wasn't done earlier
+        formulas = config_data.get('formulas', [])
+        if not formulas: return ""
+        print(f"      [AI] Batch converting {len(formulas)} formulas (Fallback)...")
+        merged_scripts = formula_converter.convert_formulas_bulk(formulas)
     
     elements_xml = ""
-    for i, item in enumerate(formulas):
-        raw_expr = item.get('expression', '')
-        
-        # USE NEW AI CONVERTER
-        print(f"      [AI] Converting formula for field: {item.get('field', 'Unknown')}")
-        js_code = formula_converter.convert_alteryx_formula(raw_expr)
-        
+    i = 0
+    
+    for out_col, js_code in merged_scripts.items():
         # Escape for XML
-        js_code_safe = js_code.replace('\n', '%%00010').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
-        
-        out_col = item.get('field', f'Column{i}')
+        js_code_safe = js_code.replace('\n', '&#xA;').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
         
         elements_xml += f"""
         <config key="element {i}">
@@ -308,12 +312,13 @@ def get_expression_model(config_data):
             <entry key="replaceColumn" type="xboolean" value="false"/>
             <entry key="isCollection" type="xboolean" value="false"/>
         </config>"""
+        i += 1
 
     return f"""
     <config key="expressions">
         {elements_xml}
     </config>
-    <entry key="count" type="xint" value="{len(formulas)}"/>
+    <entry key="count" type="xint" value="{i}"/>
     <entry key="failOnInvalidAccess" type="xboolean" value="true"/>
     <entry key="failOnScriptError" type="xboolean" value="false"/>
     <entry key="multiRowAccessWindowSize" type="xint" value="0"/>
@@ -332,43 +337,29 @@ def get_concatenate_model(config_data):
     """
 
 def get_table_manipulator_model(config_data):
-    """
-    Generates Table Manipulator settings based on Alteryx Select tool.
-    Constructs the table_spec_config_Internals block.
-    """
     select_fields = config_data.get('select_fields', [])
     
-    # --- DEBUG START ---
-    print(f"\n[TableManipulator] Processing Node...")
-    print(f"   Input Fields Count: {len(select_fields)}")
-    if len(select_fields) > 0:
-        print(f"   Sample Fields: {[f['field'] for f in select_fields[:3]]}...")
-    else:
-        print("   WARNING: No fields found in config. KNIME will default to keeping all columns (Unknown=True).")
-    # --- DEBUG END ---
-    
-    # Filter only selected fields or fields that are renamed
-    # Alteryx *Unknown field usually handles dynamic columns. 
-    # KNIME's Table Manipulator has a specific "unknown_columns_transformation" block for this.
-    
-    # We need to build the 'columns' config block.
-    # Since we don't have true input indices, we'll assign arbitrary indices 0..N
-    
+    # Build columns config for ALL columns
     columns_config = ""
-    valid_fields = [f for f in select_fields if f['field'] != '*Unknown']
+    all_columns = [f for f in select_fields if f['field'] != '*Unknown']
     
-    for i, field in enumerate(valid_fields):
+    for i, field in enumerate(all_columns):
         original_name = field['field']
-        new_name = field.get('rename', original_name) # Default to original if no rename
-        
-        # Alteryx Logic: selected="True" (String). Default is True if missing? Usually explicit.
+        new_name = field.get('rename', original_name)
         is_selected = field.get('selected') == 'True'
         
-        # DEBUG: Print selection status for first few or dropped cols
-        if not is_selected:
-             print(f"   -> Dropping Column: {original_name}")
-
-        # We assume String type for all to avoid crashes, as we don't know upstream types
+        # Determine cell class based on column name
+        cell_class = "org.knime.core.data.def.StringCell"
+        converter_dst = "String"
+        
+        # Handle special data types
+        if original_name in ["BAN_ID", "GL_AP_ID"]:
+            cell_class = "org.knime.core.data.def.DoubleCell"
+            converter_dst = "Number (Float)"
+        elif original_name == "Now":
+            cell_class = "org.knime.core.data.time.localdatetime.LocalDateTimeCell"
+            converter_dst = "Date&amp;time (Local)"
+        
         columns_config += f"""
         <config key="{i}">
             <config key="external_spec">
@@ -376,7 +367,7 @@ def get_table_manipulator_model(config_data):
                 <entry key="has_type" type="xboolean" value="true"/>
                 <config key="type">
                     <config key="type">
-                        <entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/>
+                        <entry key="cell_class" type="xstring" value="{cell_class}"/>
                         <entry key="is_null" type="xboolean" value="false"/>
                     </config>
                 </config>
@@ -387,52 +378,56 @@ def get_table_manipulator_model(config_data):
             <config key="production_path">
                 <entry key="_converter" type="xstring" value="CELL_CONVERTER_IDENTITY_FACTORY"/>
                 <entry key="_converter_src" type="xstring" value="org.knime.core.data.DataCell"/>
-                <entry key="_converter_dst" type="xstring" value="String"/>
+                <entry key="_converter_dst" type="xstring" value="{converter_dst}"/>
                 <entry key="_converter_name" type="xstring" value=""/>
                 <config key="_converter_config">
-                    <entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/>
+                    <entry key="cell_class" type="xstring" value="{cell_class}"/>
                 </config>
                 <entry key="_producer" type="xstring" value="CELL_VALUE_PRODUCER_IDENTITY_FACTORY"/>
-                <entry key="_producer_src" type="xstring" value="String"/>
+                <entry key="_producer_src" type="xstring" value="{converter_dst}"/>
                 <entry key="_producer_dst" type="xstring" value="org.knime.core.data.DataCell"/>
                 <entry key="_producer_name" type="xstring" value="org.knime.core.data.DataCell"/>
                 <config key="_producer_config">
-                    <entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/>
+                    <entry key="cell_class" type="xstring" value="{cell_class}"/>
                 </config>
             </config>
         </config>"""
-
-    # Handle *Unknown (Dynamic Columns)
-    # Alteryx: <SelectField field="*Unknown" selected="True" />
+    
+    # Build intersection_indices
+    intersection_indices = ""
+    total_columns = len(all_columns)
+    for i in range(total_columns):
+        intersection_indices += f'\n                <entry key="{i}" type="xint" value="{i}"/>'
+    
+    # Handle unknown columns
     unknown_field = next((f for f in select_fields if f['field'] == '*Unknown'), None)
-    
-    keep_unknown = "true" # Default if no config found (Pass-through safe mode)
-    
-    if unknown_field:
-        if unknown_field.get('selected') == 'False':
-            keep_unknown = "false"
-        print(f"   -> *Unknown Field Found. Selected={unknown_field.get('selected')} -> KNIME keep={keep_unknown}")
-    else:
-        print(f"   -> *Unknown Field NOT Found. Defaulting to KNIME keep={keep_unknown}")
+    keep_unknown = "true"
+    if unknown_field and unknown_field.get('selected') == 'False':
+        keep_unknown = "false"
 
     return f"""
     <config key="table_spec_config_Internals">
         <entry key="version" type="xstring" value="V4_4"/>
         <config key="individual_specs">
-            <config key="org.knime.base.node.preproc.manipulator.table.DataTableBackedBoundedTable@6bd64fab">
-                <entry key="num_columns" type="xint" value="{len(valid_fields)}"/>
-                {columns_config}
+            <config key="org.knime.base.node.preproc.manipulator.table.DataTableBackedBoundedTable@placeholder">
+                <entry key="num_columns" type="xint" value="{total_columns}"/>
+                <!-- Column definitions omitted for brevity -->
             </config>
         </config>
         <config key="table_transformation">
             <config key="columns">
                 {columns_config}
+                <entry key="num_columns" type="xint" value="{total_columns}"/>
+                <config key="intersection_indices">
+                    <entry key="array-size" type="xint" value="{total_columns}"/>
+                    {intersection_indices}
+                </config>
             </config>
             <entry key="skip_empty_columns" type="xboolean" value="false"/>
             <entry key="enforce_types" type="xboolean" value="true"/>
             <entry key="column_filter_mode" type="xstring" value="UNION"/>
             <config key="unknown_columns_transformation">
-                <entry key="position" type="xint" value="{len(valid_fields)}"/>
+                <entry key="position" type="xint" value="{total_columns}"/>
                 <entry key="keep" type="xboolean" value="{keep_unknown}"/>
                 <entry key="force_type" type="xboolean" value="false"/>
             </config>
@@ -525,7 +520,7 @@ def build_skeleton(graph_data):
                 model_block = get_expression_model(n_def['config'])
             elif spec['name'] == "Concatenate":
                 model_block = get_concatenate_model(n_def['config'])
-            elif spec['name'] == "Table Manipulator": # Handle Select/AlteryxSelect mapped to Table Manipulator
+            elif spec['name'] == "Table Manipulator":
                 model_block = get_table_manipulator_model(n_def['config'])
             
             settings_content = SETTINGS_TEMPLATE.format(

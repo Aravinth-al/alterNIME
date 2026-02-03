@@ -1,2 +1,4 @@
-networkx>=3.1
-matplotlib>=3.7
+flask
+requests
+matplotlib
+networkx

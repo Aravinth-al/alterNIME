@@ -87,6 +87,7 @@ def get_node_config(tool_type, node_xml):
 
         # Input Data
         elif "DbFileInput" in tool_type:
+            data['cached_name'] = conf.findtext("CachedCosmeticName") # <--- ADD THIS
             file_node = conf.find("File")
             if file_node is not None and file_node.text:
                 raw_text = file_node.text
@@ -118,6 +119,17 @@ def get_node_config(tool_type, node_xml):
             print(f"   [DEBUG] Found Union Tool.")
             data['mode'] = conf.findtext('Mode')
             data['output_mode'] = conf.findtext('ByName_OutputMode')
+        
+        elif "Sort" in tool_type:
+            sort_fields = []
+            # The XML structure is <SortInfo> -> <Field field="X" order="Ascending" />
+            # We use .// to find it regardless of nesting depth
+            for field in conf.findall('.//SortInfo/Field'):
+                sort_fields.append({
+                    'field': field.get('field'),
+                    'order': field.get('order')
+                })
+            data['sort_fields'] = sort_fields
 
         # Select (AlteryxSelect)
         elif "AlteryxSelect" in tool_type or "Select" in tool_type:

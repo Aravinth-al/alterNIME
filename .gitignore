@@ -14,3 +14,5 @@
 # Python cache (never commit)
 /__pycache__/
 *.pyc
+
+src/templates/

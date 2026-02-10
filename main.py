@@ -2,7 +2,7 @@ from src import config, extractor, builder, visualizer
 import os
 
 def run():
-    print(">>> ALTERNIME-2.0: SKELETON BUILDER")
+    print(">>> altKNIME-2.0: SKELETON BUILDER")
     
     # 1. SETUP
     if not os.path.exists(config.INPUT_DIR):

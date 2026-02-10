@@ -11,7 +11,7 @@ WORKFLOW_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <entry key="version" type="xstring" value="5.1.0"/>
     <entry key="name" type="xstring" isnull="true" value=""/>
     <config key="authorInformation">
-        <entry key="authored-by" type="xstring" value="alterNIME"/>
+        <entry key="authored-by" type="xstring" value="altKNIME"/>
         <entry key="authored-when" type="xstring" value="2026-01-01 00:00:00 +0000"/>
     </config>
     <config key="workflow_credentials"/>
@@ -111,6 +111,133 @@ ORACLE_CONNECTOR_CONTENT = """
     <entry key="selectedType" type="xstring" value="USER_PWD"/>
 </config>
 """
+
+# --- ORACLE DEFAULT MAPPINGS (REQUIRED TO FIX ERROR) ---
+# --- FIXED ORACLE MAPPINGS (Exact Keys) ---
+# --- EXACT MAPPINGS FROM REFERENCE XML ---
+ORACLE_MAPPINGS_XML = """
+<config key="external_to_knime_mapping_Internals">
+    <entry key="SettingsModelID" type="xstring" value="SMID_dataTypeMapping"/>
+    <entry key="EnabledStatus" type="xboolean" value="true"/>
+</config>
+<config key="external_to_knime_mapping">
+    <config key="type_to_type_mapping_rules">
+        <config key="type_to_type_mapping_rule_0">
+            <entry key="external_type" type="xstring" value="VARCHAR"/>
+            <entry key="intermediate_type" type="xstring" value="java.lang.String"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.def.StringCell$StringCellFactory.createCell(class java.lang.String)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_1">
+            <entry key="external_type" type="xstring" value="CHAR"/>
+            <entry key="intermediate_type" type="xstring" value="java.lang.String"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.def.StringCell$StringCellFactory.createCell(class java.lang.String)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_2">
+            <entry key="external_type" type="xstring" value="INTEGER"/>
+            <entry key="intermediate_type" type="xstring" value="java.lang.Integer"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.IntCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.def.IntCell$IntCellFactory.create(class java.lang.Integer)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_3">
+            <entry key="external_type" type="xstring" value="DECIMAL"/>
+            <entry key="intermediate_type" type="xstring" value="java.lang.Double"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.DoubleCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.def.DoubleCell$DoubleCellFactory.create(class java.lang.Double)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_4">
+            <entry key="external_type" type="xstring" value="DATE"/>
+            <entry key="intermediate_type" type="xstring" value="java.time.LocalDate"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.time.localdate.LocalDateCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.time.localdate.LocalDateCellFactory.create(class java.time.LocalDate)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_5">
+            <entry key="external_type" type="xstring" value="TIMESTAMP"/>
+            <entry key="intermediate_type" type="xstring" value="java.time.LocalDateTime"/>
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.time.localdatetime.LocalDateTimeCell"/></config>
+            <entry key="production_path_converter" type="xstring" value="org.knime.core.data.time.localdatetime.LocalDateTimeCellFactory.create(class java.time.LocalDateTime)"/>
+        </config>
+    </config>
+</config>
+<config key="knime_to_external_mapping_Internals">
+    <entry key="SettingsModelID" type="xstring" value="SMID_dataTypeMapping"/>
+    <entry key="EnabledStatus" type="xboolean" value="true"/>
+</config>
+<config key="knime_to_external_mapping">
+    <config key="type_to_type_mapping_rules">
+        <config key="type_to_type_mapping_rule_0">
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.StringCell"/></config>
+            <entry key="intermediate_type" type="xstring" value="java.lang.String"/>
+            <entry key="external_type" type="xstring" value="VARCHAR"/>
+            <entry key="consumption_path_converter" type="xstring" value="org.knime.core.data.convert.java.SimpleDataCellToJavaConverterFactory(StringValue,class java.lang.String,String)"/>
+        </config>
+        <config key="type_to_type_mapping_rule_1">
+            <config key="type"><entry key="cell_class" type="xstring" value="org.knime.core.data.def.IntCell"/></config>
+            <entry key="intermediate_type" type="xstring" value="java.lang.Integer"/>
+            <entry key="external_type" type="xstring" value="INTEGER"/>
+            <entry key="consumption_path_converter" type="xstring" value="org.knime.core.data.convert.java.SimpleDataCellToJavaConverterFactory(IntValue,class java.lang.Integer,Integer)"/>
+        </config>
+    </config>
+</config>
+"""
+
+def get_oracle_connector_model(config_data):
+    """
+    Generates a generic Oracle Connector with valid mappings.
+    The user will manually configure the Host/Port in KNIME.
+    """
+    # 1. Get Database Name (Alias)
+    cached_name = config_data.get('cached_name', '')
+    alias = cached_name.split('_')[0] if cached_name else "ORACLE_DB"
+
+    # 2. Defaults (Safe Placeholders)
+    final_host = ""  # Leaving this empty allows you to type it safely
+    final_port = "1521"
+    final_db = alias
+    final_user = "otauser" 
+
+    # 3. Driver ID
+    driver_name = "built-in-oracle-19.14.0"
+
+    return f"""
+    <config key="oracle-connection">
+        <entry key="host" type="xstring" value="{final_host}"/>
+        <entry key="port" type="xint" value="{final_port}"/>
+        <entry key="database_name" type="xstring" value="{final_db}"/>
+    </config>
+    <config key="authentication">
+        <entry key="credentials" type="xstring" isnull="true" value=""/>
+        <entry key="username" type="xstring" value="{final_user}"/>
+        <entry key="password" type="xpassword" isnull="true" value=""/>
+        <entry key="selectedType" type="xstring" value="USER_PWD"/>
+    </config>
+    <config key="session_info">
+        <entry key="version" type="xint" value="7"/>
+        <entry key="db_type" type="xstring" value="oracle"/>
+        <entry key="db_dialect" type="xstring" value="oracle"/>
+        <entry key="db_driver" type="xstring" value="{driver_name}"/>
+        <entry key="db_driver_latest" type="xboolean" value="true"/>
+        <config key="attributes"/>
+    </config>
+    {ORACLE_MAPPINGS_XML}
+    """
+def load_oracle_template(alias):
+    """
+    Tries to load a pre-configured settings.xml for a specific DB Alias.
+    Look in src/templates/oracle/{alias}.xml
+    """
+    # Clean alias to be filename safe (e.g. "TMUPROD")
+    safe_alias = "".join([c for c in alias if c.isalnum() or c in (' ', '_', '-')]).strip()
+    
+    template_path = os.path.join(config.BASE_DIR, "src", "templates", "oracle", f"{safe_alias}.xml")
+    
+    if os.path.exists(template_path):
+        print(f"   [Oracle] 🟢 Found Template for '{safe_alias}'")
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    
+    return None
 
 def get_groupby_model(config_data):
     """Generates GroupBy settings with correctly mapped aggregations."""
@@ -442,7 +569,38 @@ def get_table_manipulator_model(config_data):
         <entry key="prepend_table_index_to_row_id" type="xboolean" value="false"/>
     </config>
     """
+def get_sorter_model(config_data):
+    """
+    Generates Sorter settings.
+    Maps Alteryx 'Ascending'/'Descending' to KNIME 'ASCENDING'/'DESCENDING'.
+    """
+    # Assumption: The extractor has parsed the XML <Field> tags into this list
+    # Format: [{'field': 'BAN', 'order': 'Ascending'}, ...]
+    sort_fields = config_data.get('sort_fields', [])
+    
+    criteria_xml = ""
+    for i, item in enumerate(sort_fields):
+        col_name = item.get('field', '')
+        # Alteryx: Ascending/Descending -> KNIME: ASCENDING/DESCENDING
+        order = item.get('order', 'Ascending').upper()
+        
+        criteria_xml += f"""
+        <config key="{i}">
+            <config key="columnV2">
+                <entry key="regularChoice" type="xstring" value="{col_name}"/>
+                <entry key="specialChoice_Internals" type="xstring" isnull="true" value=""/>
+            </config>
+            <entry key="sortingOrder" type="xstring" value="{order}"/>
+            <entry key="stringComparison" type="xstring" value="NATURAL"/>
+        </config>"""
 
+    return f"""
+    <config key="sortingCriteria">
+        {criteria_xml}
+    </config>
+    <entry key="missingToEnd" type="xboolean" value="false"/>
+    <entry key="sortinmemory" type="xboolean" value="false"/>
+    """
 def build_skeleton(graph_data):
     output_path = os.path.join(config.OUTPUT_DIR, "skeleton.knwf")
     print(f"🏗️  Building Skeleton to {output_path}...")
@@ -506,12 +664,45 @@ def build_skeleton(graph_data):
                 safe_sql = raw_sql.replace('"', '&quot;').replace('<', '&lt;')
                 model_block = DB_QUERY_CONTENT.format(sql_query=safe_sql)
             elif spec['name'] == "Oracle Connector":
-                model_block = ORACLE_CONNECTOR_CONTENT.format(
-                    host=n_def['config'].get('host', 'localhost'),
-                    port=n_def['config'].get('port', 1521),
-                    database_name=n_def['config'].get('db_name', 'XE'),
-                    username=n_def['config'].get('username', 'user')
-                )
+                # 1. Determine Alias (Standard logic)
+                cached_name = n_def['config'].get('cached_name', '')
+                raw_file = n_def['config'].get('sql_query', '')
+                alias = "XE"
+                if cached_name:
+                    alias = cached_name.split('_')[0]
+                elif "aka:" in raw_file:
+                    potential = raw_file.split("aka:")[1].split("|||")[0].strip()
+                    if len(potential) < 30: alias = potential
+
+                # 2. Strategy Check: Template vs. Generator
+                custom_xml = load_oracle_template(alias)
+                
+                if custom_xml:
+                    # STRATEGY A: Use the User's Gold Image
+                    # We bypass the SETTINGS_TEMPLATE entirely because the file is already complete
+                    settings_content = custom_xml
+                else:
+                    # STRATEGY B: Fallback to Auto-Generation
+                    print(f"   [Oracle] ⚠️ No template for '{alias}'. Using generic generator.")
+                    model_block = get_oracle_connector_model(n_def['config'])
+                    settings_content = SETTINGS_TEMPLATE.format(
+                        name=spec['name'], factory=spec['factory'], bundle=spec['bundle'],
+                        symbolic=spec['symbolic'], model_content=model_block
+                    )
+
+                # 3. Write to Zip (Common for both strategies)
+                zip_contents[f"{folder_name}/settings.xml"] = settings_content
+
+                x = int(node['x']) + n_def['offset_x']
+                y = int(node['y']) + n_def['offset_y']
+                
+                nodes_xml_parts.append(NODE_ENTRY_TEMPLATE.format(
+                    index=node_entries_count, knime_id=knime_id, folder_name=folder_name, x=x, y=y
+                ))
+                node_entries_count += 1
+                
+                # SKIP the default loop processing below since we handled it manually
+                continue
             elif spec['name'] == "GroupBy":
                 model_block = get_groupby_model(n_def['config'])
             elif spec['name'] == "Joiner":
@@ -522,6 +713,8 @@ def build_skeleton(graph_data):
                 model_block = get_concatenate_model(n_def['config'])
             elif spec['name'] == "Table Manipulator":
                 model_block = get_table_manipulator_model(n_def['config'])
+            elif spec['name'] == "Sorter":
+                model_block = get_sorter_model(n_def['config'])
             
             settings_content = SETTINGS_TEMPLATE.format(
                 name=spec['name'], factory=spec['factory'], bundle=spec['bundle'],
